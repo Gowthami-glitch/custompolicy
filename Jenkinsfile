@@ -2,86 +2,73 @@ pipeline {
     agent any
 
     environment {
-        SONAR_TOKEN = credentials('sonar-token')         // Ensure this credential exists
-        SONAR_SCANNER_HOME = tool 'sonarqube'            // Must match name configured in Global Tool Configuration
+        ARM_CLIENT_ID       = credentials('azure-sp')     // Client ID of lucky
+        ARM_CLIENT_SECRET   = credentials('azure-sp-secret') // Secret Value of lucky
+        ARM_TENANT_ID       = credentials('azure-tenant') // Tenant ID
+        ARM_SUBSCRIPTION_ID = credentials('azure-subscription') // Subscription ID
     }
 
     stages {
-        stage('Git Checkout') {
+        stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/luckysuie/custompolicy.git'
+                git branch: 'main', url: 'https://github.com/<your-username>/custompolicy.git'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('sonarserver') {         // 'sonarserver' must be configured under SonarQube servers
-                    sh '''
-                        ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
-                        -Dsonar.projectKey=jenkins1234 \
-                        -Dsonar.sources=. \
-                        -Dsonar.host.url=http://172.190.143.248:9000 \
-                        -Dsonar.login=${SONAR_TOKEN}
-                    '''
-                }
-            }
-        }
-
-        stage('Publish SonarQube Results') {
-            steps {
-                echo 'Re-running scanner to publish results without quality gate blocking...'
                 withSonarQubeEnv('sonarserver') {
                     sh '''
-                        ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
-                        -Dsonar.projectKey=jenkins1234 \
-                        -Dsonar.sources=. \
-                        -Dsonar.host.url=http://172.190.143.248:9000 \
-                        -Dsonar.login=${SONAR_TOKEN} \
-                        -Dsonar.qualitygate.wait=false
+                    sonar-scanner \
+                      -Dsonar.projectKey=custompolicy \
+                      -Dsonar.sources=. \
+                      -Dsonar.host.url=$SONAR_HOST_URL \
+                      -Dsonar.login=$SONAR_AUTH_TOKEN
                     '''
                 }
             }
         }
 
-        stage('Login to Azure') {
-            steps {
-                withCredentials([
-                    usernamePassword(credentialsId: 'azure-sp', usernameVariable: 'AZURE_APP_ID', passwordVariable: 'AZURE_PASSWORD'),
-                    string(credentialsId: 'azure-tenant', variable: 'AZURE_TENANT')
-                ]) {
-                    sh '''
-                        az login --service-principal -u $AZURE_APP_ID -p $AZURE_PASSWORD --tenant $AZURE_TENANT
-                    '''
-                }
-            }
-        }
-        stage('Terraform Initialize') {
+        stage('Azure Login') {
             steps {
                 sh '''
-                    terraform init
+                az login --service-principal \
+                    -u $ARM_CLIENT_ID \
+                    -p $ARM_CLIENT_SECRET \
+                    --tenant $ARM_TENANT_ID
+                az account set --subscription $ARM_SUBSCRIPTION_ID
                 '''
             }
         }
-        stage('Terraform validate') {
+
+        stage('Terraform Init') {
             steps {
-                sh '''
-                    terraform validate
-                '''
+                sh 'terraform init'
             }
         }
+
+        stage('Terraform Validate') {
+            steps {
+                sh 'terraform validate'
+            }
+        }
+
         stage('Terraform Plan') {
             steps {
-                sh '''
-                    terraform plan -out=tfplan
-                '''
+                sh 'terraform plan -out=tfplan.out'
             }
         }
+
         stage('Terraform Apply') {
             steps {
-                sh '''
-                    terraform apply -auto-approve tfplan
-                '''
+                sh 'terraform apply -auto-approve tfplan.out'
             }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
         }
     }
 }
