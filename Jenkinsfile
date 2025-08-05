@@ -11,7 +11,9 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/<Gowthami-glitch>/custompolicy.git'
+               git branch: 'main',
+    credentialsId: 'github-creds',
+    url: 'https://github.com/Gowthami-glitch/custompolicy.git'
             }
         }
 
