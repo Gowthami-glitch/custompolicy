@@ -2,11 +2,11 @@ pipeline {
     agent any
 
     environment {
-        ARM_CLIENT_ID       = credentials('azure-sp')           // Client ID of lucky
-        ARM_CLIENT_SECRET   = credentials('azure-sp-secret')    // Secret Value of lucky
-        ARM_TENANT_ID       = credentials('azure-tenant')       // Tenant ID
-        ARM_SUBSCRIPTION_ID = credentials('azure-subscription') // Subscription ID
-        SONAR_AUTH_TOKEN    = credentials('sonar-token')        // SonarQube token
+        ARM_CLIENT_ID       = credentials('azure-sp')              // Client ID of lucky
+        ARM_CLIENT_SECRET   = credentials('azure-sp-secret')       // Secret Value of lucky
+        ARM_TENANT_ID       = credentials('azure-tenant')          // Tenant ID
+        ARM_SUBSCRIPTION_ID = credentials('azure-subscription')    // Subscription ID
+        SONAR_AUTH_TOKEN    = credentials('sonar-token')           // SonarQube token
     }
 
     stages {
@@ -23,28 +23,14 @@ pipeline {
                 script {
                     // Use the Jenkins SonarQube Scanner tool named "sonarqube"
                     def scannerHome = tool 'sonarqube'
-                    withSonarQubeEnv('sonarserver') {
-                        sh """
-                        ${scannerHome}/bin/sonar-scanner \
-                          -Dsonar.projectKey=custompolicy \
-                          -Dsonar.sources=. \
-                          -Dsonar.host.url=$SONAR_HOST_URL \
-                          -Dsonar.login=$SONAR_AUTH_TOKEN
-                        """
+                    withSonarQubeEnv('sonarqube') {
+                        sh "${scannerHome}/bin/sonar-scanner \
+                            -Dsonar.projectKey=custompolicy \
+                            -Dsonar.sources=. \
+                            -Dsonar.host.url=http://<YOUR-SONARQUBE-URL>:9000 \
+                            -Dsonar.login=${SONAR_AUTH_TOKEN}"
                     }
                 }
-            }
-        }
-
-        stage('Azure Login') {
-            steps {
-                sh '''
-                az login --service-principal \
-                    -u $ARM_CLIENT_ID \
-                    -p $ARM_CLIENT_SECRET \
-                    --tenant $ARM_TENANT_ID
-                az account set --subscription $ARM_SUBSCRIPTION_ID
-                '''
             }
         }
 
@@ -75,8 +61,11 @@ pipeline {
 
     post {
         always {
-            cleanWs()
+            script {
+                node {
+                    cleanWs()
+                }
+            }
         }
     }
 }
-
