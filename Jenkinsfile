@@ -20,15 +20,16 @@ pipeline {
 
        stage('SonarQube Analysis') {
     steps {
-        script {
-            withSonarQubeEnv('sonarqube') {
+        withSonarQubeEnv('sonarqube') { // Name from Jenkins config
+            script {
+                def scannerHome = tool 'sonarqube' // Name from "SonarQube Scanner installations"
                 sh """
-                    sonar-scanner \
-                      -Dsonar.organization=gowthami-glitch \
-                      -Dsonar.projectKey=Gowthami-glitch_custompolicy \
-                      -Dsonar.sources=. \
-                      -Dsonar.host.url=https://sonarcloud.io \
-                      -Dsonar.login=$SONAR_AUTH_TOKEN
+                    ${scannerHome}/bin/sonar-scanner \
+                    -Dsonar.organization=gowthami-glitch \
+                    -Dsonar.projectKey=Gowthami-glitch_custompolicy \
+                    -Dsonar.sources=. \
+                    -Dsonar.host.url=https://sonarcloud.io \
+                    -Dsonar.login=${SONAR_AUTH_TOKEN}
                 """
             }
         }
