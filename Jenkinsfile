@@ -18,21 +18,22 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
-            steps {
-                script {
-                    // Use the Jenkins SonarQube Scanner tool named "sonarqube"
-                    def scannerHome = tool 'sonarqube'
-                    withSonarQubeEnv('sonarqube') {
-                        sh "${scannerHome}/bin/sonar-scanner \
-                            -Dsonar.projectKey=custompolicy \
-                            -Dsonar.sources=. \
-                            -Dsonar.host.url=http://<YOUR-SONARQUBE-URL>:9000 \
-                            -Dsonar.login=${SONAR_AUTH_TOKEN}"
-                    }
-                }
+       stage('SonarQube Analysis') {
+    steps {
+        script {
+            withSonarQubeEnv('sonarqube') {
+                sh """
+                    sonar-scanner \
+                      -Dsonar.organization=gowthami-glitch \
+                      -Dsonar.projectKey=Gowthami-glitch_custompolicy \
+                      -Dsonar.sources=. \
+                      -Dsonar.host.url=https://sonarcloud.io \
+                      -Dsonar.login=$SONAR_AUTH_TOKEN
+                """
             }
         }
+    }
+}
 
         stage('Terraform Init') {
             steps {
