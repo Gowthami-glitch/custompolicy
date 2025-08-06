@@ -2,20 +2,14 @@ pipeline {
     agent any
 
     environment {
-        // Azure Service Principal credentials stored in Jenkins
-        ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')   // store as "Secret Text"
-        ARM_CLIENT_ID       = credentials('azure-client-id')         // store as "Secret Text"
-        ARM_CLIENT_SECRET   = credentials('azure-client-secret')     // store as "Secret Text"
-        ARM_TENANT_ID       = credentials('azure-tenant-id')         // store as "Secret Text"
-
-        // SonarQube token
-        SONAR_AUTH_TOKEN = credentials('sonar-token')                 // store as "Secret Text"
+        SONARQUBE = 'sonarqube' // SonarQube installation name in Jenkins
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Gowthami-glitch/custompolicy'
+                git branch: 'main',
+                    url: 'https://github.com/Gowthami-glitch/custompolicy'
             }
         }
 
@@ -23,12 +17,11 @@ pipeline {
             steps {
                 withSonarQubeEnv('sonarqube') {
                     sh """
-                        ${tool 'sonarqube'}/bin/sonar-scanner \
-                          -Dsonar.organization=gowthami-glitch \
-                          -Dsonar.projectKey=Gowthami-glitch_custompolicy \
-                          -Dsonar.sources=. \
-                          -Dsonar.host.url=https://sonarcloud.io \
-                          -Dsonar.login=${SONAR_AUTH_TOKEN}
+                        /var/lib/jenkins/tools/hudson.plugins.sonar.SonarRunnerInstallation/sonarqube/bin/sonar-scanner \
+                        -Dsonar.organization=gowthami-glitch \
+                        -Dsonar.projectKey=Gowthami-glitch_custompolicy \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=https://sonarcloud.io
                     """
                 }
             }
@@ -36,40 +29,40 @@ pipeline {
 
         stage('Terraform Init') {
             steps {
-                sh 'terraform init'
+                withCredentials([
+                    string(credentialsId: 'azure-tenant', variable: 'ARM_TENANT_ID'),
+                    string(credentialsId: 'azure-subscription', variable: 'ARM_SUBSCRIPTION_ID'),
+                    string(credentialsId: 'azure-sp', variable: 'ARM_CLIENT_ID'),
+                    string(credentialsId: 'azure-sp-secret', variable: 'ARM_CLIENT_SECRET')
+                ]) {
+                    sh '''
+                        export ARM_TENANT_ID=$ARM_TENANT_ID
+                        export ARM_SUBSCRIPTION_ID=$ARM_SUBSCRIPTION_ID
+                        export ARM_CLIENT_ID=$ARM_CLIENT_ID
+                        export ARM_CLIENT_SECRET=$ARM_CLIENT_SECRET
+
+                        terraform init
+                    '''
+                }
             }
         }
 
         stage('Terraform Validate') {
             steps {
-                sh """
-                terraform validate \
-                  -var "subscription_id=${ARM_SUBSCRIPTION_ID}" \
-                  -var "client_id=${ARM_CLIENT_ID}" \
-                  -var "client_secret=${ARM_CLIENT_SECRET}" \
-                  -var "tenant_id=${ARM_TENANT_ID}"
-                """
+                sh 'terraform validate'
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                sh """
-                terraform plan \
-                  -var "subscription_id=${ARM_SUBSCRIPTION_ID}" \
-                  -var "client_id=${ARM_CLIENT_ID}" \
-                  -var "client_secret=${ARM_CLIENT_SECRET}" \
-                  -var "tenant_id=${ARM_TENANT_ID}" \
-                  -out=tfplan.out
-                """
+                sh 'terraform plan -out=tfplan.out'
             }
         }
 
         stage('Terraform Apply') {
             steps {
-                sh """
-                terraform apply -auto-approve tfplan.out
-                """
+                input(message: 'Do you want to apply the Terraform changes?')
+                sh 'terraform apply -auto-approve tfplan.out'
             }
         }
     }
