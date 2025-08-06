@@ -14,7 +14,7 @@ pipeline {
             steps {
                 git branch: 'main',
                     credentialsId: 'github-creds',
-                    url: 'https://github.com/Gowthami-glitch/custompolicy.git'
+                    url: 'https://github.com/Gowthami-glitch/custompolicy'
             }
         }
 
