@@ -1,15 +1,20 @@
 variable "subscription_id" {
-  type = string
+  type        = string
+  description = "Azure Subscription ID"
 }
 
-variable "location" {
-  description = "Azure region for the resource group"
+variable "client_id" {
   type        = string
-  default     = "East US"
+  description = "Azure Service Principal App ID"
 }
 
-variable "resource_group_name" {
-  description = "Name of the resource group where the policy will be applied"
+variable "client_secret" {
   type        = string
-  default     = "rg-custom-policy"
+  description = "Azure Service Principal Password"
+  sensitive   = true
+}
+
+variable "tenant_id" {
+  type        = string
+  description = "Azure Tenant ID"
 }
