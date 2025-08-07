@@ -52,33 +52,28 @@ pipeline {
                 sh 'terraform validate'
             }
         }
-
-        stage('Terraform Plan') {
+   stage('Terraform Plan') {
     steps {
         withCredentials([
-            string(credentialsId: 'ARM_CLIENT_ID', variable: 'ARM_CLIENT_ID'),
-            string(credentialsId: 'ARM_CLIENT_SECRET', variable: 'ARM_CLIENT_SECRET'),
-            string(credentialsId: 'ARM_SUBSCRIPTION_ID', variable: 'ARM_SUBSCRIPTION_ID'),
-            string(credentialsId: 'ARM_TENANT_ID', variable: 'ARM_TENANT_ID')
+            string(credentialsId: 'azure-sp', variable: 'ARM_CLIENT_ID'),
+            string(credentialsId: 'azure-sp-secret', variable: 'ARM_CLIENT_SECRET'),
+            string(credentialsId: 'azure-subscription', variable: 'ARM_SUBSCRIPTION_ID'),
+            string(credentialsId: 'azure-tenant', variable: 'ARM_TENANT_ID')
         ]) {
             sh '''
-                cat <<EOF > terraform.tfvars
-subscription_id     = "$ARM_SUBSCRIPTION_ID"
-client_id           = "$ARM_CLIENT_ID"
-client_secret       = "$ARM_CLIENT_SECRET"
-tenant_id           = "$ARM_TENANT_ID"
-resource_group_name = "jenkins-tf-rg"
-location            = "canadacentral"
-EOF
-
-                echo "===== terraform.tfvars content ====="
-                cat terraform.tfvars
+                echo "subscription_id = \\"$ARM_SUBSCRIPTION_ID\\"" > terraform.tfvars
+                echo "client_id       = \\"$ARM_CLIENT_ID\\"" >> terraform.tfvars
+                echo "client_secret   = \\"$ARM_CLIENT_SECRET\\"" >> terraform.tfvars
+                echo "tenant_id       = \\"$ARM_TENANT_ID\\"" >> terraform.tfvars
+                echo "resource_group_name = \\"myResourceGroup\\"" >> terraform.tfvars
+                echo "location            = \\"canadacentral\\"" >> terraform.tfvars
 
                 terraform plan -var-file="terraform.tfvars" -out=tfplan.out
             '''
         }
     }
 }
+       
             stage('Terraform Apply') {
             steps {
                 input(message: 'Do you want to apply the Terraform changes?')
